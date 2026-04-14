@@ -12,7 +12,8 @@
     "test": "vitest run --passWithNoTests",
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "lint": "eslint src",
-    "lint:fix": "eslint src --fix"
+    "lint:fix": "eslint src --fix",
+    "report:new": "node ./scripts/generate-report-handler.mjs"
   },
   "dependencies": {
     "@reportplatform/shared": "workspace:*"

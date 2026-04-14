@@ -10,6 +10,7 @@ out/
 
 # IDE
 .vscode/
+.cursor/
 .idea/
 *.swp
 *.swo
@@ -35,3 +36,4 @@ Thumbs.db
 # Cache
 .turbo/
 .cache/
+tmp/
