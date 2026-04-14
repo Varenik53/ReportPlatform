@@ -1,0 +1,52 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: report_platform
+      POSTGRES_USER: report_platform
+      POSTGRES_PASSWORD: report_platform
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+
+  api:
+    build:
+      context: .
+      dockerfile: packages/api/Dockerfile
+    environment:
+      PORT: 4000
+      DATABASE_URL: postgres://report_platform:report_platform@postgres:5432/report_platform
+      STORAGE_DIR: /app/storage
+    depends_on:
+      - postgres
+    ports:
+      - "4000:4000"
+    volumes:
+      - report-storage:/app/storage
+
+  worker:
+    build:
+      context: .
+      dockerfile: packages/worker/Dockerfile
+    environment:
+      DATABASE_URL: postgres://report_platform:report_platform@postgres:5432/report_platform
+      STORAGE_DIR: /app/storage
+      WORKER_POLL_INTERVAL_MS: 5000
+    depends_on:
+      - postgres
+    volumes:
+      - report-storage:/app/storage
+
+  web:
+    build:
+      context: .
+      dockerfile: packages/web/Dockerfile
+    depends_on:
+      - api
+    ports:
+      - "3000:3000"
+
+volumes:
+  postgres-data:
+  report-storage:

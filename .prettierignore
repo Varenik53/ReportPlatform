@@ -1,0 +1,9 @@
+node_modules
+.turbo
+coverage
+dist
+.eslintcache
+pnpm-lock.yaml
+**/node_modules
+**/coverage
+**/dist

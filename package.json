@@ -1,0 +1,46 @@
+{
+  "name": "@reportplatform/root",
+  "version": "1.0.0",
+  "description": "Report Platform Monorepo",
+  "private": true,
+  "packageManager": "pnpm@10.11.0",
+  "scripts": {
+    "dev": "pnpm -r --parallel --if-present run dev",
+    "dev:api": "pnpm --filter @reportplatform/api dev",
+    "dev:worker": "pnpm --filter @reportplatform/worker dev",
+    "dev:web": "pnpm --filter @reportplatform/web dev",
+    "build": "pnpm -r --if-present run build",
+    "test": "pnpm -r --if-present run test",
+    "typecheck": "pnpm -r --if-present run typecheck",
+    "lint": "pnpm -r --if-present run lint",
+    "lint:fix": "pnpm -r --if-present run lint:fix",
+    "format:check": "prettier --check .",
+    "format": "prettier --write .",
+    "docker:up": "docker compose up --build",
+    "docker:down": "docker compose down",
+    "commitlint": "commitlint --from=HEAD~1 --to=HEAD",
+    "prepare": "husky"
+  },
+  "lint-staged": {
+    "packages/**/*.{ts,tsx,js,mjs,cjs}": [
+      "pnpm exec prettier --write",
+      "pnpm exec eslint --cache --fix --max-warnings=0"
+    ],
+    "*.{js,mjs,cjs}": [
+      "pnpm exec prettier --write",
+      "pnpm exec eslint --cache --fix --max-warnings=0"
+    ],
+    "*.{json,md,yml,yaml,css,html}": "pnpm exec prettier --write"
+  },
+  "devDependencies": {
+    "@commitlint/cli": "^19.8.1",
+    "@commitlint/config-conventional": "^19.8.1",
+    "@eslint/js": "^9.39.1",
+    "eslint": "^9.39.1",
+    "globals": "^16.4.0",
+    "husky": "^9.1.7",
+    "lint-staged": "^16.4.0",
+    "prettier": "^3.8.2",
+    "typescript-eslint": "^8.46.2"
+  }
+}
