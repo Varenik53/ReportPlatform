@@ -1,20 +1,16 @@
 import type { ReportDescriptor } from "@reportplatform/shared";
 
-const reportRegistry: ReportDescriptor[] = [
-  {
-    key: "sales-summary",
-    name: "Sales Summary",
-    description: "XLSX report with aggregated sales metrics for a selected period.",
-    formats: ["xlsx"],
-  },
-  {
-    key: "weather-brief",
-    name: "Weather Brief",
-    description: "PDF snapshot with external or mocked weather data and highlights.",
-    formats: ["pdf"],
-  },
-];
+import type { ReportArtifact, ReportHandler } from "./contracts/report-handler.js";
+import {
+  getReportDescriptors,
+  getReportHandlerByKey,
+  getReportHandlers,
+} from "./registry/report-registry.js";
+
+export type { ReportArtifact, ReportHandler };
 
 export function getAvailableReports(): ReportDescriptor[] {
-  return reportRegistry;
+  return getReportDescriptors();
 }
+
+export { getReportHandlerByKey, getReportHandlers };
