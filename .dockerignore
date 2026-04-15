@@ -1,7 +1,57 @@
-node_modules
-dist
+# Git & CI
 .git
+.github
+
+# IDE & editor
+.vscode
+.cursor
+.idea
+*.swp
+*.swo
+*~
+
+# Dependencies (installed in the image)
+node_modules
+**/.pnpm-store
+
+# Build outputs (rebuilt in the image)
+dist
+build
 .next
+out
+
+# Cache & temp
+.turbo
+.cache
+tmp
+logs
 coverage
+htmlcov
+
+# Local env (never bake secrets into layers)
+.env
+.env.*
+!.env.example
+
+# Runtime / generated files (bind-mounted in compose, not image source)
+storage
+
+# DB init scripts mounted by postgres service, not used in app images
+init-db
+
+# Hooks (HUSKY=0 in some Dockerfiles; hooks are not needed in context)
+.husky
+
+# Logs
 *.log
-postgres-data
+pnpm-debug.log*
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# OS junk
+.DS_Store
+Thumbs.db
+
+# Docs (not copied by Dockerfiles)
+*.md

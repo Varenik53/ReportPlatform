@@ -5,14 +5,17 @@
   "private": true,
   "type": "module",
   "main": "./dist/index.js",
+  "module": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
       "default": "./dist/index.js"
     },
     "./server": {
       "types": "./dist/server/index.d.ts",
+      "import": "./dist/server/index.js",
       "default": "./dist/server/index.js"
     }
   },
