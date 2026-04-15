@@ -44,7 +44,7 @@ function parseArgs(argv) {
   const [reportKey, ...rest] = argv;
   const options = {
     name: toTitleCase(reportKey),
-    description: `Generated report handler for ${toTitleCase(reportKey)}.`,
+    description: `Сгенерированный обработчик отчёта для ${toTitleCase(reportKey)}.`,
     formats: ["xlsx"],
   };
 
@@ -106,7 +106,7 @@ export const ${constName}: ReportHandler = {
   generate(run) {
     return Promise.resolve({
       fileExtension: "${defaultFormat}",
-      content: buildStubReportContent("${options.name}", run),
+      content: Buffer.from(buildStubReportContent("${options.name}", run), "utf8"),
     });
   },
 };

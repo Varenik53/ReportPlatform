@@ -1,39 +1,17 @@
 import { randomUUID } from "node:crypto";
+import { unlink } from "node:fs/promises";
+import { resolve } from "node:path";
 
-import { Pool, type QueryResult } from "pg";
+import type { Pool, QueryResult } from "pg";
 
-import type { CreateReportRunInput, ReportRun, ReportRunDbRow } from "@reportplatform/shared";
-import { mapReportRunDbRow } from "@reportplatform/shared";
-
-let databasePool: Pool | null = null;
-
-const REPORT_RUN_COLUMNS = `
-  id,
-  report_key,
-  format,
-  status,
-  created_at,
-  params_json,
-  started_at,
-  finished_at,
-  file_path,
-  file_name,
-  error_message
-`;
-
-function getDatabasePool(): Pool {
-  if (databasePool !== null) {
-    return databasePool;
-  }
-
-  const connectionString = process.env.DATABASE_URL;
-  if (!connectionString) {
-    throw new Error("DATABASE_URL is required.");
-  }
-
-  databasePool = new Pool({ connectionString });
-  return databasePool;
-}
+import {
+  REPORT_RUN_STATUS,
+  mapReportRunDbRow,
+  type CreateReportRunInput,
+  type ReportRun,
+  type ReportRunDbRow,
+} from "@reportplatform/shared";
+import { REPORT_RUN_COLUMNS, getDatabasePool } from "@reportplatform/shared/server";
 
 export async function listReportRuns(): Promise<ReportRun[]> {
   const pool: Pool = getDatabasePool();
@@ -78,8 +56,35 @@ export async function createReportRun(input: CreateReportRunInput): Promise<Repo
       VALUES ($1, $2, $3, $4, $5, NOW())
       RETURNING ${REPORT_RUN_COLUMNS}
     `,
-    [runId, input.reportKey, input.format, paramsJson, "queued"],
+    [runId, input.reportKey, input.format, paramsJson, REPORT_RUN_STATUS.Queued],
   );
 
   return mapReportRunDbRow(result.rows[0]);
+}
+
+export async function deleteReportRun(id: string, storageDir: string): Promise<boolean> {
+  const pool: Pool = getDatabasePool();
+  const existing = await pool.query<{ file_path: string | null }>(
+    `SELECT file_path FROM report_runs WHERE id = $1`,
+    [id],
+  );
+
+  if (existing.rows.length === 0) {
+    return false;
+  }
+
+  const filePath = existing.rows[0].file_path;
+
+  await pool.query(`DELETE FROM report_runs WHERE id = $1`, [id]);
+
+  if (filePath) {
+    const fullPath = resolve(storageDir, filePath);
+    try {
+      await unlink(fullPath);
+    } catch {
+      console.warn(`[api] could not delete file ${fullPath}, it may have been removed already`);
+    }
+  }
+
+  return true;
 }

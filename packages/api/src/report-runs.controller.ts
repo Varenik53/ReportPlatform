@@ -1,12 +1,12 @@
 import { createReadStream } from "node:fs";
-import { access } from "node:fs/promises";
-import { basename, resolve, sep } from "node:path";
+import { basename } from "node:path";
 
 import {
   BadRequestException,
   Body,
   ConflictException,
   Controller,
+  Delete,
   Get,
   HttpCode,
   HttpStatus,
@@ -17,23 +17,19 @@ import {
   Post,
   Res,
 } from "@nestjs/common";
-import type { ApiSuccessResponse, ReportRun } from "@reportplatform/shared";
+import {
+  REPORT_FORMAT_META,
+  REPORT_RUN_STATUS,
+  type ApiSuccessResponse,
+  type ReportRun,
+} from "@reportplatform/shared";
+import {
+  resolveExistingArtifactPath,
+  resolveStorageDirectory,
+} from "@reportplatform/shared/server";
 import type { Response } from "express";
 
 import { ReportRunsService } from "./report-runs.service.ts";
-
-function buildDownloadPath(storageDir: string, relativeFilePath: string): string | null {
-  const rootDirectory = resolve(storageDir);
-  const targetPath = resolve(rootDirectory, relativeFilePath);
-  const hasValidPrefix =
-    targetPath === rootDirectory || targetPath.startsWith(`${rootDirectory}${sep}`);
-
-  if (!hasValidPrefix) {
-    return null;
-  }
-
-  return targetPath;
-}
 
 @Controller("report-runs")
 export class ReportRunsController {
@@ -52,7 +48,7 @@ export class ReportRunsController {
       };
     } catch (error) {
       console.error("[api] failed to list report runs", error);
-      throw new InternalServerErrorException("Failed to list report runs.");
+      throw new InternalServerErrorException("Не удалось получить список запусков.");
     }
   }
 
@@ -61,15 +57,17 @@ export class ReportRunsController {
   async createRun(@Body() payload: unknown): Promise<ApiSuccessResponse<ReportRun>> {
     const parsedPayload = this.reportRunsService.parseCreateRunPayload(payload);
     if (!parsedPayload) {
-      throw new BadRequestException("Body must include reportKey, format and params object.");
+      throw new BadRequestException(
+        "Тело запроса должно содержать reportKey, format и объект params.",
+      );
     }
 
     if (!this.reportRunsService.isKnownReport(parsedPayload.reportKey)) {
-      throw new BadRequestException("Unknown report key.");
+      throw new BadRequestException("Неизвестный ключ отчёта.");
     }
 
     if (!this.reportRunsService.isFormatSupported(parsedPayload.reportKey, parsedPayload.format)) {
-      throw new BadRequestException("Format is not supported for selected report.");
+      throw new BadRequestException("Формат не поддерживается для выбранного отчёта.");
     }
 
     try {
@@ -80,7 +78,7 @@ export class ReportRunsController {
       };
     } catch (error) {
       console.error("[api] failed to create report run", error);
-      throw new InternalServerErrorException("Failed to create report run.");
+      throw new InternalServerErrorException("Не удалось создать запуск отчёта.");
     }
   }
 
@@ -89,7 +87,7 @@ export class ReportRunsController {
     try {
       const run = await this.reportRunsService.getRunById(runId);
       if (!run) {
-        throw new NotFoundException("Report run not found.");
+        throw new NotFoundException("Запуск отчёта не найден.");
       }
 
       return {
@@ -102,7 +100,7 @@ export class ReportRunsController {
       }
 
       console.error("[api] failed to fetch report run", error);
-      throw new InternalServerErrorException("Failed to fetch report run.");
+      throw new InternalServerErrorException("Не удалось получить запуск отчёта.");
     }
   }
 
@@ -111,33 +109,19 @@ export class ReportRunsController {
     try {
       const run = await this.reportRunsService.getRunById(runId);
       if (!run) {
-        throw new NotFoundException("Report run not found.");
+        throw new NotFoundException("Запуск отчёта не найден.");
       }
 
-      if (run.status !== "succeeded" || !run.filePath || !run.fileName) {
-        throw new ConflictException("Report file is not ready yet.");
+      if (run.status !== REPORT_RUN_STATUS.Succeeded || !run.filePath || !run.fileName) {
+        throw new ConflictException("Файл отчёта ещё не готов.");
       }
 
-      const storageDir = process.env.STORAGE_DIR;
-      if (!storageDir) {
-        throw new InternalServerErrorException("STORAGE_DIR is not configured.");
-      }
-
-      const resolvedFilePath = buildDownloadPath(storageDir, run.filePath);
+      const resolvedFilePath = await resolveExistingArtifactPath(run.filePath);
       if (!resolvedFilePath) {
-        throw new BadRequestException("Invalid file path.");
+        throw new NotFoundException("Сгенерированный файл не найден.");
       }
 
-      try {
-        await access(resolvedFilePath);
-      } catch {
-        throw new NotFoundException("Generated file not found.");
-      }
-
-      const contentType =
-        run.format === "pdf"
-          ? "application/pdf"
-          : "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+      const contentType = REPORT_FORMAT_META[run.format].mimeType;
 
       response.setHeader("content-type", contentType);
       response.setHeader("content-disposition", `attachment; filename="${basename(run.fileName)}"`);
@@ -148,7 +132,7 @@ export class ReportRunsController {
         if (!response.headersSent) {
           response.status(HttpStatus.INTERNAL_SERVER_ERROR).json({
             success: false,
-            error: "Failed to stream generated file.",
+            error: "Не удалось передать сгенерированный файл.",
           });
           return;
         }
@@ -170,7 +154,27 @@ export class ReportRunsController {
       }
 
       console.error("[api] failed to download report run file", error);
-      throw new InternalServerErrorException("Failed to download report file.");
+      throw new InternalServerErrorException("Не удалось скачать файл отчёта.");
+    }
+  }
+
+  @Delete(":id")
+  @HttpCode(HttpStatus.NO_CONTENT)
+  async deleteRun(@Param("id") runId: string): Promise<void> {
+    const storageDir = resolveStorageDirectory();
+
+    try {
+      const deleted = await this.reportRunsService.deleteRun(runId, storageDir);
+      if (!deleted) {
+        throw new NotFoundException("Запуск отчёта не найден.");
+      }
+    } catch (error) {
+      if (error instanceof NotFoundException) {
+        throw error;
+      }
+
+      console.error("[api] failed to delete report run", error);
+      throw new InternalServerErrorException("Не удалось удалить запуск отчёта.");
     }
   }
 }

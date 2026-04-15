@@ -11,11 +11,12 @@ const DEFAULT_ROWS_PER_PAGE = 10;
 
 interface RunsListProps {
   runs: ReportRun[];
+  reportNameMap?: ReadonlyMap<string, string>;
   onDeleteRun?: (runId: string) => void;
   deletingRunId?: string | null;
 }
 
-export function RunsList({ runs, onDeleteRun, deletingRunId }: RunsListProps) {
+export function RunsList({ runs, reportNameMap, onDeleteRun, deletingRunId }: RunsListProps) {
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(DEFAULT_ROWS_PER_PAGE);
 
@@ -48,6 +49,7 @@ export function RunsList({ runs, onDeleteRun, deletingRunId }: RunsListProps) {
               <RunCard
                 key={run.id}
                 run={run}
+                reportNameMap={reportNameMap}
                 onDelete={onDeleteRun}
                 isDeleting={deletingRunId === run.id}
               />

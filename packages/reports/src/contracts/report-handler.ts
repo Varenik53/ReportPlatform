@@ -2,7 +2,7 @@ import type { ReportDescriptor, ReportFormat, ReportRun } from "@reportplatform/
 
 export interface ReportArtifact {
   fileExtension: ReportFormat;
-  content: string;
+  content: Buffer;
 }
 
 export interface ReportHandler {
