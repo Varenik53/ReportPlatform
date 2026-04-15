@@ -1,13 +1,6 @@
 ﻿# Report Platform
 
-Прототип платформы отчетов для технического задания: запускать отчеты, обрабатывать их асинхронно, отслеживать статусы и скачивать результаты через веб-интерфейс.
-
-## Цель
-
-- Сделать архитектуру понятной и легко объяснимой.
-- Обеспечить быстрый сценарий добавления нового отчета.
-- Держать генерацию отчетов асинхронной через отдельный `worker`.
-- Поддержать полный happy path: создать запуск -> отследить статус -> скачать файл.
+Прототип платформы отчётов: запуск генерации, асинхронная обработка, отслеживание статусов, скачивание результатов через веб-интерфейс.
 
 ## Быстрый старт
 
@@ -15,147 +8,81 @@
 docker compose up --build
 ```
 
-- Web UI: http://localhost:3000
-- API: http://localhost:4000
+- **Web UI:** http://localhost:3000
+- **API:** http://localhost:4000
+
+Таблицы создаются автоматически при первом старте PostgreSQL-контейнера через SQL-скрипты в `init-db/`.
+
+> В продакшене инициализация схемы заменяется на полноценные миграции (например, через `node-pg-migrate` или `prisma migrate`). В MVP достаточно init-скриптов PostgreSQL.
 
 ## Структура репозитория
 
 ```text
 packages/
-  shared/   # общие типы и DTO
-  reports/  # модули отчетов и реестр
-  api/      # HTTP endpoint'ы жизненного цикла
-  worker/   # фоновая асинхронная обработка
-  web/      # React UI
+  shared/    # общие типы, DTO, маппер, DB pool
+  reports/   # контракт отчёта, реестр, модули отчётов, кодогенератор
+  api/       # NestJS HTTP API (lifecycle и download)
+  worker/    # polling очереди и выполнение отчётов
+  web/       # React + Vite UI
 ```
 
-## Целевой MVP API
+## API
 
-```text
-GET  /api/reports
-POST /api/report-runs
-GET  /api/report-runs
-GET  /api/report-runs/:id
-GET  /api/report-runs/:id/download
-```
+| Метод | Endpoint                        | Описание                   |
+| ----- | ------------------------------- | -------------------------- |
+| GET   | `/api/reports`                  | Список доступных отчётов   |
+| POST  | `/api/report-runs`              | Создать запуск отчёта      |
+| GET   | `/api/report-runs`              | Список запусков            |
+| GET   | `/api/report-runs/:id`          | Статус конкретного запуска |
+| GET   | `/api/report-runs/:id/download` | Скачать файл результата    |
 
-Для JSON endpoint'ов используется единый envelope:
+JSON-ответы используют envelope `{ success, data?, error? }`. Download endpoint отдаёт файл напрямую; ошибки — тоже в JSON envelope.
 
-```ts
-{
-  success: boolean;
-  data?: unknown;
-  error?: string;
-}
-```
+## Как добавить новый отчёт
 
-## Текущий статус реализации
-
-Уже реализовано:
-
-- monorepo-структура (`pnpm workspaces`)
-- пакеты: `web`, `api`, `worker`, `reports`, `shared`
-- два зарегистрированных отчета: `sales-summary` (`xlsx`), `weather-brief` (`pdf`)
-- bootstrap endpoint: `GET /reports`
-- docker-compose окружение: `postgres`, `api`, `worker`, `web`
-
-В работе до полного MVP:
-
-- полный lifecycle endpoint'ов `report-runs`
-- хранение `report_runs` в PostgreSQL
-- реальная обработка запусков воркером и генерация артефактов
-- download endpoint для готовых файлов
-
-## Как добавить новый отчет
-
-Можно использовать кодогенерацию:
+### Через кодогенератор
 
 ```bash
 pnpm --filter @reportplatform/reports report:new inventory-snapshot --formats xlsx
 ```
 
-Параметры генератора:
+Команда создаёт handler-файл и автоматически регистрирует его в реестре.
 
-- `--name "Inventory Snapshot"` — отображаемое имя отчета;
-- `--description "..."` — описание отчета;
-- `--formats xlsx,pdf` — поддерживаемые форматы.
+### Вручную
 
-Что делает команда:
+1. Создать файл handler в `packages/reports/src/handlers/` по контракту `ReportHandler`.
+2. Описать `descriptor` (key, name, description, formats) и реализовать `generate(run)`.
+3. Добавить handler в массив `reportHandlers` в `packages/reports/src/registry/report-registry.ts`.
+4. Пересобрать сервисы. Новый отчёт появится в `GET /api/reports` и станет доступен для запуска.
 
-- создает файл handler в `packages/reports/src/handlers/`;
-- добавляет импорт handler в `packages/reports/src/registry/report-registry.ts`;
-- добавляет handler в массив `reportHandlers` (то есть сразу регистрирует отчет для API и worker).
+Подробнее о контракте, потоке данных и архитектурных решениях — в [ARCHITECTURE.md](./ARCHITECTURE.md).
 
-Пример результата в консоли:
-
-```text
-Result:
-{
-  "status": "ok",
-  "reportKey": "inventory-snapshot",
-  "handlerName": "inventorySnapshotHandler",
-  "formats": ["xlsx"],
-  "files": {
-    "created": "src/handlers/inventory-snapshot.handler.ts",
-    "updated": "src/registry/report-registry.ts"
-  }
-}
-```
-
-Для регистрации вручную:
-
-1. Создать handler в `packages/reports/src/handlers/` (например, `inventory-snapshot.handler.ts`).
-2. В handler описать:
-   - `descriptor`: `key`, `name`, `description`, `formats`;
-   - `generate(...)`: логику генерации и возврат артефакта.
-3. Зарегистрировать handler в реестре `packages/reports/src/registry/report-registry.ts`:
-   - добавить импорт нового handler;
-   - добавить его в массив `reportHandlers`.
-
-```ts
-import { inventorySnapshotHandler } from "../handlers/inventory-snapshot.handler.js";
-
-const reportHandlers: ReportHandler[] = [
-  salesSummaryHandler,
-  weatherBriefHandler,
-  inventorySnapshotHandler,
-];
-```
-
-4. Пересобрать/перезапустить сервисы (`api` и `worker`), чтобы они увидели новый модуль.
-5. Проверить `GET /api/reports` — новый `descriptor.key` должен появиться в списке.
-6. Запустить `POST /api/report-runs` с новым `reportKey` и убедиться, что run проходит async lifecycle (`queued` -> `running` -> `succeeded`) и файл доступен через `GET /api/report-runs/:id/download`.
-
-## Разработка
+## Разработка (без Docker)
 
 ```bash
-pnpm install
-pnpm dev
-pnpm build
-pnpm test
-pnpm lint
-pnpm typecheck
+pnpm install        # зависимости всех пакетов
+pnpm build          # сборка всех пакетов
+pnpm dev            # dev-режим (web + api + worker параллельно)
+pnpm test           # тесты
+pnpm lint           # линтер
+pnpm typecheck      # проверка типов
 ```
 
-Пояснения:
-
-- `pnpm install` — устанавливает зависимости для всех пакетов монорепозитория.
-- `pnpm dev` — поднимает все dev-процессы сразу (web, api, worker) в режиме разработки.
-- `pnpm build` — собирает все пакеты в production-артефакты.
-- `pnpm test` — запускает тесты по всему репозиторию.
-- `pnpm lint` — проверяет код линтером и помогает поймать стилистические/потенциальные ошибки.
-- `pnpm typecheck` — запускает проверку TypeScript-типов без выполнения кода.
-
-Запуск по пакетам:
+Для запуска отдельных пакетов:
 
 ```bash
-pnpm dev:api
-pnpm dev:worker
-pnpm dev:web
+pnpm dev:api        # только HTTP API
+pnpm dev:worker     # только воркер
+pnpm dev:web        # только фронтенд
 ```
 
-Когда удобно запускать по отдельности:
+При локальной разработке без Docker нужен работающий PostgreSQL с `DATABASE_URL` и переменная `STORAGE_DIR` (по умолчанию `./storage`).
 
-- `pnpm dev:api` — только HTTP API (удобно при работе с endpoint'ами и контрактами).
-- `pnpm dev:worker` — только воркер асинхронной обработки (удобно при отладке генерации отчетов и статусов run'ов).
-- `pnpm dev:web` — только фронтенд (удобно при разработке интерфейса без перезапуска backend-процессов).
+## Переменные окружения
+
+| Переменная                | Сервис     | По умолчанию | Описание                                  |
+| ------------------------- | ---------- | ------------ | ----------------------------------------- |
+| `DATABASE_URL`            | api/worker | —            | Connection string PostgreSQL (обязателен) |
+| `PORT`                    | api        | `4000`       | Порт HTTP API                             |
+| `STORAGE_DIR`             | api/worker | `./storage`  | Директория для сгенерированных файлов     |
+| `WORKER_POLL_INTERVAL_MS` | worker     | `5000`       | Интервал polling очереди (мс)             |

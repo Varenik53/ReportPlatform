@@ -1,15 +1,17 @@
 import { Injectable } from "@nestjs/common";
 import { getAvailableReports } from "@reportplatform/reports";
 import {
+  isRecord,
   normalizeParams,
   type CreateReportRunInput,
   type ReportFormat,
 } from "@reportplatform/shared";
-import { createReportRun, findReportRunById, listReportRuns } from "./report-runs.repository.js";
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null;
-}
+import {
+  createReportRun,
+  deleteReportRun,
+  findReportRunById,
+  listReportRuns,
+} from "./report-runs.repository.js";
 
 @Injectable()
 export class ReportRunsService {
@@ -55,5 +57,9 @@ export class ReportRunsService {
 
   async createRun(payload: CreateReportRunInput) {
     return createReportRun(payload);
+  }
+
+  async deleteRun(runId: string, storageDir: string): Promise<boolean> {
+    return deleteReportRun(runId, storageDir);
   }
 }

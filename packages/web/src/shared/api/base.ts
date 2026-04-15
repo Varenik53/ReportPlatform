@@ -23,6 +23,10 @@ export async function requestJson(path: string, init?: RequestInit): Promise<unk
     throw new Error(serverMessage ?? `Ошибка запроса: ${response.status} ${response.statusText}`);
   }
 
+  if (response.status === 204) {
+    return null;
+  }
+
   return response.json() as Promise<unknown>;
 }
 
@@ -31,10 +35,10 @@ export function unwrapEnvelope<T>(payload: unknown, key?: string): T | null {
     return null;
   }
 
-  const envelope = payload as ApiEnvelope<unknown>;
+  const envelope = payload as ApiEnvelope<Record<string, unknown>>;
 
-  if (envelope.data !== undefined) {
-    if (key && isRecord(envelope.data) && envelope.data[key] !== undefined) {
+  if (envelope.data !== undefined && envelope.data !== null) {
+    if (key && envelope.data[key] !== undefined) {
       return envelope.data[key] as T;
     }
     return envelope.data as T;

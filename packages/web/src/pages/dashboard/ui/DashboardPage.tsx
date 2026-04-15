@@ -55,6 +55,8 @@ export function DashboardPage() {
     deleteRunMutation.mutate(runId);
   }
 
+  const reportNameMap = useMemo(() => new Map(reports.map((r) => [r.key, r.name])), [reports]);
+
   const sortedRuns = useMemo(
     () =>
       [...runs].sort(
@@ -105,6 +107,7 @@ export function DashboardPage() {
               <ReportsList reports={reports} />
               <RunsList
                 runs={sortedRuns}
+                reportNameMap={reportNameMap}
                 onDeleteRun={handleDeleteRun}
                 deletingRunId={
                   deleteRunMutation.isPending ? (deleteRunMutation.variables ?? null) : null

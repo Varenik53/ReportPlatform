@@ -1,9 +1,12 @@
-export function getPort(rawValue: string | undefined, fallbackPort: number): number {
-  const parsedPort = Number.parseInt(rawValue ?? "", 10);
+export function parseIntEnv(rawValue: string | undefined, fallback: number): number {
+  const parsed = Number.parseInt(rawValue ?? "", 10);
 
-  if (Number.isNaN(parsedPort)) {
-    return fallbackPort;
+  if (Number.isNaN(parsed)) {
+    return fallback;
   }
 
-  return parsedPort;
+  return parsed;
 }
+
+/** @deprecated Use {@link parseIntEnv} instead. */
+export const getPort = parseIntEnv;
