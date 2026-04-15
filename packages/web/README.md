@@ -9,6 +9,33 @@
 - показывает список запусков и их статусы;
 - позволяет скачать результат после успешной генерации.
 
+## Архитектура (Feature-Sliced Design)
+
+Приложение организовано по [FSD](https://feature-sliced.design/):
+
+```text
+src/
+  app/              # Точка входа, провайдеры (ThemeProvider), глобальные стили
+  pages/            # Страницы — композиция виджетов и фич
+    dashboard/
+  widgets/          # Составные UI-блоки
+    dashboard-stats/
+    reports-list/
+    runs-list/
+  features/         # Пользовательские сценарии
+    create-run/
+  entities/         # Бизнес-сущности (модель, API, UI-карточка)
+    report/
+    report-run/
+  shared/           # Общие утилиты без бизнес-логики
+    api/
+    lib/
+```
+
+Правило зависимостей: `app → pages → widgets → features → entities → shared`.
+
+Алиас `@/` указывает на `src/` (настроен в `tsconfig.app.json` и `vite.config.ts`).
+
 ## Локальный запуск
 
 Из корня репозитория:
