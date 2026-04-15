@@ -1,0 +1,141 @@
+/**
+ * Design tokens — single source of truth for the application design language.
+ *
+ * Naming follows the "category → semantic name" pattern common in design systems.
+ * Every raw value (colour, size, spacing) used in the app should come from here.
+ */
+
+/* ------------------------------------------------------------------ */
+/*  Palette                                                           */
+/* ------------------------------------------------------------------ */
+
+export const palette = {
+  brand: {
+    50: "#eff6ff",
+    100: "#dbeafe",
+    main: "#1e40af",
+    light: "#3b82f6",
+    dark: "#1e3a8a",
+    contrast: "#ffffff",
+    accent: "#2563eb",
+  },
+
+  secondary: {
+    main: "#7c3aed",
+    light: "#a78bfa",
+    dark: "#5b21b6",
+  },
+
+  success: {
+    main: "#059669",
+    light: "#34d399",
+    dark: "#065f46",
+    mid: "#10b981",
+  },
+
+  warning: {
+    main: "#d97706",
+    light: "#fbbf24",
+    dark: "#92400e",
+  },
+
+  error: {
+    main: "#dc2626",
+    light: "#f87171",
+    dark: "#991b1b",
+  },
+
+  info: {
+    main: "#0284c7",
+    light: "#38bdf8",
+    dark: "#075985",
+  },
+
+  neutral: {
+    0: "#ffffff",
+    50: "#f8fafc",
+    100: "#f1f5f9",
+    200: "#e2e8f0",
+    300: "#cbd5e1",
+    400: "#94a3b8",
+    500: "#64748b",
+    600: "#475569",
+    900: "#0f172a",
+  },
+
+  overlay: {
+    white4: "rgba(255,255,255,0.04)",
+    white6: "rgba(255,255,255,0.06)",
+    white80: "rgba(255,255,255,0.80)",
+    white85: "rgba(255,255,255,0.85)",
+    dark6: "rgba(15,23,42,0.06)",
+  },
+} as const;
+
+/* ------------------------------------------------------------------ */
+/*  Typography                                                        */
+/* ------------------------------------------------------------------ */
+
+export const typography = {
+  fontFamily: {
+    base: '"Inter Variable", Inter, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
+    mono: "monospace",
+  },
+
+  fontSize: {
+    xs: "0.7rem",
+    sm: "0.75rem",
+    md: "0.875rem",
+    base: "1rem",
+  },
+
+  fontWeight: {
+    normal: 400,
+    medium: 500,
+    semibold: 600,
+    bold: 700,
+  },
+
+  letterSpacing: {
+    tight: "-0.02em",
+    snug: "-0.01em",
+  },
+
+  lineHeight: {
+    normal: 1.5,
+  },
+} as const;
+
+/* ------------------------------------------------------------------ */
+/*  Spacing & Radii                                                   */
+/* ------------------------------------------------------------------ */
+
+export const radii = {
+  sm: 8,
+  md: 10,
+  lg: 12,
+} as const;
+
+/* ------------------------------------------------------------------ */
+/*  Icon sizes                                                        */
+/* ------------------------------------------------------------------ */
+
+export const iconSize = {
+  xs: 16,
+  sm: 18,
+  md: 20,
+  lg: 32,
+} as const;
+
+/* ------------------------------------------------------------------ */
+/*  Aggregated export                                                 */
+/* ------------------------------------------------------------------ */
+
+export const tokens = {
+  palette,
+  typography,
+  radii,
+  iconSize,
+} as const;
+
+export type DesignTokens = typeof tokens;

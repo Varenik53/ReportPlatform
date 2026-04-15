@@ -1,31 +1,14 @@
-import { CssBaseline } from "@mui/material";
-import { ThemeProvider, createTheme } from "@mui/material/styles";
-
-import { DashboardPage } from "../pages/DashboardPage";
-
-const appTheme = createTheme({
-  palette: {
-    mode: "light",
-    primary: {
-      main: "#0f172a",
-    },
-    background: {
-      default: "#f8fafc",
-    },
-  },
-  shape: {
-    borderRadius: 12,
-  },
-  typography: {
-    fontFamily: 'Inter, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
-  },
-});
+import { DashboardPage } from "@/pages/dashboard";
+import { GlobalLoader } from "@/shared/ui";
+import { QueryProvider, ThemeProvider } from "./providers";
 
 export function App() {
   return (
-    <ThemeProvider theme={appTheme}>
-      <CssBaseline />
-      <DashboardPage />
-    </ThemeProvider>
+    <QueryProvider>
+      <ThemeProvider>
+        <GlobalLoader />
+        <DashboardPage />
+      </ThemeProvider>
+    </QueryProvider>
   );
 }
