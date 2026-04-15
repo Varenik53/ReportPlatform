@@ -40,11 +40,12 @@ function StatusIcon({ status }: { status: ReportRunStatus }) {
 
 interface RunCardProps {
   run: ReportRun;
+  reportNameMap?: ReadonlyMap<string, string>;
   onDelete?: (runId: string) => void;
   isDeleting?: boolean;
 }
 
-export function RunCard({ run, onDelete, isDeleting }: RunCardProps) {
+export function RunCard({ run, reportNameMap, onDelete, isDeleting }: RunCardProps) {
   return (
     <Paper component="li" variant="outlined" sx={{ p: 2 }} aria-labelledby={`run-title-${run.id}`}>
       <Stack direction="row" justifyContent="space-between" alignItems="center" gap={1}>
@@ -94,7 +95,7 @@ export function RunCard({ run, onDelete, isDeleting }: RunCardProps) {
           <Typography component="span" variant="caption" color="text.secondary">
             Отчет:
           </Typography>{" "}
-          {run.reportKey}
+          {reportNameMap?.get(run.reportKey) ?? run.reportKey}
         </Typography>
         <Typography variant="body2">
           <Typography component="span" variant="caption" color="text.secondary">

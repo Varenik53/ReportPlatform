@@ -2,6 +2,13 @@ import type { ReportFormat } from "./report.js";
 
 export type ReportRunStatus = "queued" | "running" | "succeeded" | "failed";
 
+export const REPORT_RUN_STATUS = {
+  Queued: "queued",
+  Running: "running",
+  Succeeded: "succeeded",
+  Failed: "failed",
+} as const satisfies Record<string, ReportRunStatus>;
+
 export interface ReportRun {
   id: string;
   reportKey: string;
