@@ -16,6 +16,13 @@ export function getDatabasePool(): Pool {
   return databasePool;
 }
 
+export async function closeDatabasePool(): Promise<void> {
+  if (databasePool !== null) {
+    await databasePool.end();
+    databasePool = null;
+  }
+}
+
 export const REPORT_RUN_COLUMNS = `
   id,
   report_key,
