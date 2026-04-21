@@ -11,7 +11,7 @@
       "@reportplatform/shared": ["../shared/src/index.ts"]
     },
     "jsx": "react-jsx",
-    "types": ["vite/client"],
+    "types": ["vite/client", "vitest/globals", "@testing-library/jest-dom"],
     "declaration": false,
     "declarationMap": false,
     "noEmit": true

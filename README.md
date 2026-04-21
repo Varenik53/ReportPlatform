@@ -11,6 +11,8 @@ docker compose up --build
 - **Web UI:** http://localhost:3000
 - **API:** http://localhost:4000
 
+E2E (Playwright) вынесены в отдельный сервис Compose с профилем `e2e`; см. раздел [E2E-тесты](#e2e-тесты).
+
 Таблицы создаются автоматически при первом старте PostgreSQL-контейнера через SQL-скрипты в `init-db/`.
 
 > В продакшене инициализация схемы заменяется на полноценные миграции (например, через `node-pg-migrate` или `prisma migrate`). В MVP достаточно init-скриптов PostgreSQL.
@@ -78,6 +80,52 @@ pnpm dev:web        # только фронтенд
 
 При локальной разработке без Docker нужен работающий PostgreSQL с `DATABASE_URL` и переменная `STORAGE_DIR` (по умолчанию `./storage`).
 
+## Тесты
+
+### Unit-тесты
+
+```bash
+# Запустить все unit-тесты
+pnpm test
+
+# Запустить тесты одного пакета
+pnpm --filter @reportplatform/api test
+pnpm --filter @reportplatform/worker test
+pnpm --filter @reportplatform/reports test
+```
+
+Тесты используют **Vitest** и запускаются без реальной БД и файловой системы (используются моки).
+
+### E2E-тесты
+
+E2E-тесты используют **Playwright** и проверяют полный поток: создание запуска, ожидание обработки, скачивание файла.
+
+**Через Docker (рекомендуется для проверки как в CI):** приложение и тесты в одной сети Compose, базовый URL для браузера — `http://web:3000`. Зависимости (`postgres`, `api`, `worker`, `web`) поднимутся сами, если ещё не запущены.
+
+```bash
+pnpm docker:e2e
+```
+
+**Локально** (браузер на хосте, UI по умолчанию `http://127.0.0.1:3000`):
+
+```bash
+docker compose up --build
+pnpm test:e2e
+```
+
+Переопределить базовый URL: задайте `PLAYWRIGHT_BASE_URL` (см. таблицу переменных ниже).
+
+### CI проверки
+
+```bash
+# Запустить все проверки как в CI: тесты + e2e
+pnpm test:ci
+
+# Дополнительно: lint и typecheck
+pnpm lint
+pnpm typecheck
+```
+
 ## Сообщения коммитов (Conventional Commits)
 
 Для сообщений коммитов используется соглашение [Conventional Commits](https://www.conventionalcommits.org/): краткое описание изменения в фиксированном формате, чтобы по истории было видно тип правки и при необходимости автоматизировать changelog и версионирование.
@@ -106,9 +154,10 @@ docs: описать Conventional Commits в README
 
 ## Переменные окружения
 
-| Переменная                | Сервис     | По умолчанию | Описание                                  |
-| ------------------------- | ---------- | ------------ | ----------------------------------------- |
-| `DATABASE_URL`            | api/worker | —            | Connection string PostgreSQL (обязателен) |
-| `PORT`                    | api        | `4000`       | Порт HTTP API                             |
-| `STORAGE_DIR`             | api/worker | `./storage`  | Директория для сгенерированных файлов     |
-| `WORKER_POLL_INTERVAL_MS` | worker     | `5000`       | Интервал polling очереди (мс)             |
+| Переменная                | Сервис           | По умолчанию            | Описание                                                                             |
+| ------------------------- | ---------------- | ----------------------- | ------------------------------------------------------------------------------------ |
+| `DATABASE_URL`            | api/worker       | —                       | Connection string PostgreSQL (обязателен)                                            |
+| `PORT`                    | api              | `4000`                  | Порт HTTP API                                                                        |
+| `STORAGE_DIR`             | api/worker       | `./storage`             | Директория для сгенерированных файлов                                                |
+| `WORKER_POLL_INTERVAL_MS` | worker           | `5000`                  | Интервал polling очереди (мс)                                                        |
+| `PLAYWRIGHT_BASE_URL`     | e2e (Playwright) | `http://127.0.0.1:3000` | Базовый URL UI при прогоне E2E; в сервисе `e2e` в compose задаётся `http://web:3000` |

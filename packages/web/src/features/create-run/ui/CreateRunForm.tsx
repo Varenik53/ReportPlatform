@@ -161,7 +161,11 @@ export function CreateRunForm({ reports, disabled, onSubmit }: CreateRunFormProp
           size="small"
           value={reportKey}
           onChange={(event) => {
-            setReportKey(event.target.value);
+            const nextReportKey = event.target.value;
+            const nextReport = reports.find((report) => report.key === nextReportKey) ?? null;
+
+            setReportKey(nextReportKey);
+            setFormat(nextReport?.formats[0] ?? "");
             setSubmitError(null);
           }}
           required
