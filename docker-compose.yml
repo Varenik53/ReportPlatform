@@ -39,7 +39,7 @@ services:
     environment:
       DATABASE_URL: postgres://report_platform:report_platform@postgres:5432/report_platform
       STORAGE_DIR: /app/storage
-      WORKER_POLL_INTERVAL_MS: 5000
+      WORKER_POLL_INTERVAL_MS: ${WORKER_POLL_INTERVAL_MS:-5000}
     depends_on:
       postgres:
         condition: service_healthy
@@ -55,6 +55,29 @@ services:
       - api
     ports:
       - "3000:3000"
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1:3000/"]
+      interval: 3s
+      timeout: 3s
+      retries: 30
+      start_period: 5s
+
+  e2e:
+    profiles: ["e2e"]
+    build:
+      context: .
+      dockerfile: e2e/Dockerfile
+    environment:
+      PLAYWRIGHT_BASE_URL: http://web:3000
+    depends_on:
+      postgres:
+        condition: service_healthy
+      api:
+        condition: service_started
+      worker:
+        condition: service_started
+      web:
+        condition: service_healthy
 
 volumes:
   postgres-data:

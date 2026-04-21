@@ -36,4 +36,12 @@ Thumbs.db
 # Cache
 .turbo/
 .cache/
+.eslintcache
 tmp/
+
+# Tests
+playwright-report/
+test-results/
+
+# Othres
+storage/

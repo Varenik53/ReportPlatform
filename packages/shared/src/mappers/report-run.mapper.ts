@@ -6,11 +6,12 @@ function toIsoString(value: Date | string | null): string | null {
     return null;
   }
 
-  if (value instanceof Date) {
-    return value.toISOString();
+  const date = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return null;
   }
 
-  return new Date(value).toISOString();
+  return date.toISOString();
 }
 
 function toRunParams(value: unknown): Record<string, string> {

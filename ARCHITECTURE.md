@@ -1,7 +1,7 @@
 ﻿# Architecture Document — Report Platform
 
-**Версия:** 2.0.0
-**Последнее обновление:** April 15, 2026
+**Версия:** 2.1.0
+**Последнее обновление:** April 21, 2026
 
 ---
 
@@ -237,7 +237,105 @@ pnpm --filter @reportplatform/reports report:new inventory-snapshot --formats xl
 
 **Почему выбрано:** NestJS даёт структуру из коробки (controllers / services / modules), встроенный exception filter для единообразных ошибок, и хорошо ложится на будущее масштабирование API.
 
-## 9. Осознанные упрощения в MVP
+## 9. Тестовое покрытие
+
+### Стратегия тестирования
+
+Система тестируется на нескольких уровнях с использованием Vitest для unit-тестов:
+
+#### 9.1. Реестр отчётов (`packages/reports/src/registry/`)
+
+**`report-registry.test.ts`** — валидация структуры реестра:
+
+- Проверяет, что зарегистрировано ≥ 2 отчётов (соответствует заданию)
+- Проверяет взаимное соответствие дескрипторов и обработчиков
+- Валидирует уникальность ключей отчётов
+- Тестирует поиск обработчика по ключу (включая случай `undefined` при отсутствии)
+
+**Назначение:** гарантирует целостность реестра — любой новый отчёт должен быть правильно зарегистрирован.
+
+#### 9.2. Обработчики отчётов (`packages/reports/src/handlers/`)
+
+**`report-handlers.test.ts`** — проверка генерации артефактов:
+
+- `salesSummaryHandler` генерирует валидные XLSX-файлы (`PK...` magic bytes)
+- `weatherBriefHandler` генерирует валидные PDF-файлы (`%PDF` magic bytes)
+- Каждый обработчик возвращает корректное расширение файла (`fileExtension`)
+- Контент не пустой и имеет ожидаемый размер
+
+**Назначение:** убеждает, что в реестре находятся рабочие обработчики с правильной сигнатурой.
+
+#### 9.3. API сервис (`packages/api/src/`)
+
+**`report-runs.service.test.ts`** — валидация парсинга payload'ов:
+
+- `parseCreateRunPayload()` отклоняет некорректные входные данные (`null`, массивы, неполные объекты)
+- Нормализует числовые и булевы параметры в строки (внутренний контракт API)
+- Сохраняет строковые параметры как есть
+
+**Назначение:** гарантирует, что параметры, попадающие в БД и обработчики, имеют предсказуемый тип.
+
+**`app.http.test.ts`** — HTTP контракты:
+
+- Проверяет health endpoint (`GET /health`)
+- Тестирует возвращение ответов в правильном envelope формате (`{ success, data? }`)
+- Использует моки для файловой системы и хранилища
+- Проверяет корректное взаимодействие контроллеров с сервисами
+
+**Назначение:** обеспечивает, что API отвечает по контракту, независимо от реальной файловой системы.
+
+#### 9.4. Worker обработка (`packages/worker/src/`)
+
+**`report-run.processor.test.ts`** — основная логика генерации:
+
+- Вызов `processReportRun()` для неизвестного `reportKey` — отмечает запуск как failed с понятной ошибкой
+- Если формат не поддерживается обработчиком — failed с описанием проблемы
+- Успешная генерация: вызывает `handler.generate()`, пишет артефакт на диск, отмечает run как succeeded
+- Корректно обрабатывает исключения
+
+**Назначение:** гарантирует правильное выполнение полного цикла обработки отчёта в worker, включая граничные случаи.
+
+**`queue.processor.test.ts`** — управление очередью:
+
+- `processQueue()` предотвращает одновременные проходы (только один `Promise` может быть активен)
+- Полное опустошение очереди: обрабатывает все queued-запуски пока они не закончатся
+- Обработка ошибок: если `processReportRun()` выбросит исключение, запуск отмечается как failed
+- Graceful shutdown: `requestShutdown()` прерывает очередь и не обрабатывает новые запуски
+
+**Назначение:** убеждает, что очередь обрабатывается надёжно, без дедупликации и race conditions.
+
+#### 9.5. Общие утилиты и маппёры
+
+**`params.test.ts`** и **`report-run.mapper.test.ts`** в `packages/shared/` — валидация парсинга параметров и маппинга моделей.
+
+#### 9.6. E2E (`e2e/`)
+
+**`report-platform.spec.ts`** (Playwright) проверяет сквозной сценарий в браузере: список отчётов, создание запуска, появление записи в списке запусков, скачивание непустого файла.
+
+Запуск:
+
+- **Локально** при поднятом стеке на хосте: `pnpm test:e2e` (базовый URL по умолчанию `http://127.0.0.1:3000`).
+- **В Docker Compose:** сервис `e2e` (профиль `e2e`), образ на базе `mcr.microsoft.com/playwright`, переменная `PLAYWRIGHT_BASE_URL=http://web:3000`, зависимости дожидаются готовности `web` (healthcheck). Команда из корня: `pnpm docker:e2e` или `docker compose --profile e2e run --build --rm e2e`.
+
+### Стратегия тестирования
+
+Проверяются ключевые слои:
+
+- **Реестр** — гарантирует расширяемость паттерна
+- **Обработчики** — гарантирует, что отчёты работают
+- **API** — гарантирует контракт для фронтенда
+- **Worker** — гарантирует асинхронную обработку и надёжность
+- **Очередь** — гарантирует отсутствие race conditions
+- **E2E (Playwright)** — happy path через UI; локально или сервисом `e2e` в docker compose (см. §9.6)
+
+### Что не покрыто unit-тестами в MVP
+
+- Реальное взаимодействие с PostgreSQL (используются мoки)
+- Реальное чтение/запись файлов (используются моки)
+- Регрессия UI и edge cases вне одного e2e-сценария (дополнительные спецификации Playwright при необходимости)
+- Content-Type и заголовки в download-response (unit-тест мокирует стрим)
+
+## 10. Осознанные упрощения в MVP
 
 ### Stub-генерация файлов
 
@@ -255,25 +353,26 @@ pnpm --filter @reportplatform/reports report:new inventory-snapshot --formats xl
 
 Текущий worker использует `buildStubReportContent()` напрямую, а не `handler.generate()`. Это промежуточное состояние: контракт `ReportHandler.generate` определён, handler'ы его реализуют, но worker пока не делегирует вызов через реестр. Переключение — замена нескольких строк в `report-run.processor.ts`.
 
-## 10. Что не реализовано и почему
+## 11. Что не реализовано и почему
 
-| Что                                | Почему не в MVP                                      | Что нужно для продакшена                                 |
-| ---------------------------------- | ---------------------------------------------------- | -------------------------------------------------------- |
-| Аутентификация и авторизация       | Прототип однопользовательский                        | JWT/OAuth2, ролевая модель, middleware                   |
-| WebSocket / SSE для статусов       | Polling каждые 5 с достаточен для демо               | SSE или WebSocket push при смене статуса                 |
-| Очередь сообщений (Redis/RabbitMQ) | DB polling достаточен для масштаба MVP               | BullMQ + Redis для retry, приоритетов, dead letter queue |
-| Object storage (S3/MinIO)          | Shared volume работает в docker compose              | S3-compatible storage с presigned URLs                   |
-| Реальная генерация XLSX/PDF        | Фокус на архитектуре, а не на библиотеках рендеринга | exceljs / pdfkit / puppeteer внутри handler.generate()   |
-| CI/CD pipeline                     | Локальная разработка, docker compose                 | GitHub Actions: lint, test, typecheck, build, deploy     |
-| Structured logging и мониторинг    | console.log достаточен для прототипа                 | pino / winston, OpenTelemetry, Prometheus, Grafana       |
-| Фильтрация API                     | Список ограничен 200 записями                        | cursor-based pagination, фильтры по status/reportKey     |
+| Что                                | Почему не в MVP                                                                                  | Что нужно для продакшена                                                                                               |
+| ---------------------------------- | ------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------- |
+| Аутентификация и авторизация       | Прототип однопользовательский                                                                    | JWT/OAuth2, ролевая модель, middleware                                                                                 |
+| WebSocket / SSE для статусов       | Polling каждые 5 с достаточен для демо                                                           | SSE или WebSocket push при смене статуса                                                                               |
+| Очередь сообщений (Redis/RabbitMQ) | DB polling достаточен для масштаба MVP                                                           | BullMQ + Redis для retry, приоритетов, dead letter queue                                                               |
+| Object storage (S3/MinIO)          | Shared volume работает в docker compose                                                          | S3-compatible storage с presigned URLs                                                                                 |
+| Реальная генерация XLSX/PDF        | Фокус на архитектуре, а не на библиотеках рендеринга                                             | exceljs / pdfkit / puppeteer внутри handler.generate()                                                                 |
+| CI/CD pipeline                     | Локальная разработка, docker compose                                                             | GitHub Actions: lint, test, typecheck, build, deploy                                                                   |
+| E2E в CI/CD                        | Сценарии в `e2e/`; повторяемый прогон — `docker compose --profile e2e run --rm e2e` (см. README) | Job в CI: поднять стек (`docker compose up -d`), затем тот же прогон e2e; при падении — trace/screenshot/reporter HTML |
+| Structured logging и мониторинг    | console.log достаточен для прототипа                                                             | pino / winston, OpenTelemetry, Prometheus, Grafana                                                                     |
+| Фильтрация API                     | Список ограничен 200 записями                                                                    | cursor-based pagination, фильтры по status/reportKey                                                                   |
 
-## 11. Production roadmap
+## 12. Production roadmap
 
 1. **Очередь задач:** заменить DB polling на BullMQ + Redis (retry-политики, приоритеты, dead letter)
 2. **Object storage:** перенести артефакты в S3/MinIO, отдавать через presigned URL
 3. **Миграции:** добавить инструмент миграций, запускать в CI
 4. **Auth:** JWT/OAuth2, ролевая модель, защита endpoint'ов
 5. **Observability:** structured logging (pino), traces (OpenTelemetry), метрики, alerting
-6. **CI/CD:** lint + test + typecheck + build + deploy pipeline
+6. **CI/CD:** lint + test + typecheck + build + deploy pipeline; e2e воспроизводимы через сервис `e2e` в compose — **техдолг:** закрепить это в автоматическом pipeline и публиковать артефакты при сбоях
 7. **Push-уведомления:** SSE/WebSocket вместо polling для обновления статусов в UI
