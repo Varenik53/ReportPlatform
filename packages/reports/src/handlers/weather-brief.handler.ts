@@ -6,7 +6,7 @@ import type { ReportRun } from "@reportplatform/shared";
 
 import type { ReportHandler } from "../contracts/report-handler.js";
 
-/** PDFKit built-ins (Helvetica) do not cover Cyrillic; embed Noto Sans TTF. */
+/** Встроенные шрифты PDFKit (Helvetica) не покрывают кириллицу — используем Noto Sans TTF. */
 const FONT_REGULAR = fileURLToPath(
   new URL("../../assets/fonts/NotoSans-Regular.ttf", import.meta.url),
 );

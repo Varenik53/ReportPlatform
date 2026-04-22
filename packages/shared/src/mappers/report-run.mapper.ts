@@ -31,6 +31,12 @@ function toRunParams(value: unknown): Record<string, string> {
   return normalizeParams(value);
 }
 
+/**
+ * Преобразует строку из Postgres в API-дружелюбную форму {@link ReportRun}.
+ *
+ * - Даты приводятся к ISO-строкам (по возможности).
+ * - `params_json` безопасно парсится и нормализуется в `Record<string, string>`.
+ */
 export function mapReportRunDbRow(row: ReportRunDbRow): ReportRun {
   return {
     id: row.id,

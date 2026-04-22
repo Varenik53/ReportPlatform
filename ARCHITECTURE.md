@@ -1,7 +1,7 @@
-﻿# Architecture Document — Report Platform
+# Architecture Document — Report Platform
 
-**Версия:** 2.1.0
-**Последнее обновление:** April 21, 2026
+**Версия:** 2.1.1
+**Последнее обновление:** April 22, 2026
 
 ---
 
@@ -126,7 +126,7 @@ Envelope для всех JSON-ответов:
 | `file_name`     | `TEXT`        | Имя файла для скачивания                      |
 | `error_message` | `TEXT`        | Сообщение об ошибке (при `failed`)            |
 
-> В MVP таблица создаётся вручную (см. README). В продакшене — через инструмент миграций.
+> В MVP схема БД инициализируется автоматически **при первом старте** PostgreSQL-контейнера через SQL-скрипты в `init-db/` (см. README и `docker-compose.yml`). Полноценного инструмента миграций в прототипе нет; в продакшене — обязательно.
 
 ## 7. Контракт отчёта и шаблон добавления
 
@@ -184,7 +184,7 @@ pnpm --filter @reportplatform/reports report:new inventory-snapshot --formats xl
 
 **Альтернативы:**
 
-- Полные микросервисы — избыточная сложность для прототипа, требует service mesh / API gateway
+- Полные микросервисы — избыточная сложность для прототипа
 - Всё в одном процессе — нет изоляции тяжёлой генерации от HTTP-запросов, один сбой роняет всё
 - Синхронная генерация в API — блокирует HTTP-запросы, не масштабируется
 
@@ -245,7 +245,7 @@ pnpm --filter @reportplatform/reports report:new inventory-snapshot --formats xl
 
 #### 9.1. Реестр отчётов (`packages/reports/src/registry/`)
 
-**`report-registry.test.ts`** — валидация структуры реестра:
+`**report-registry.test.ts`\*\* — валидация структуры реестра:
 
 - Проверяет, что зарегистрировано ≥ 2 отчётов (соответствует заданию)
 - Проверяет взаимное соответствие дескрипторов и обработчиков
@@ -256,7 +256,7 @@ pnpm --filter @reportplatform/reports report:new inventory-snapshot --formats xl
 
 #### 9.2. Обработчики отчётов (`packages/reports/src/handlers/`)
 
-**`report-handlers.test.ts`** — проверка генерации артефактов:
+`**report-handlers.test.ts`\*\* — проверка генерации артефактов:
 
 - `salesSummaryHandler` генерирует валидные XLSX-файлы (`PK...` magic bytes)
 - `weatherBriefHandler` генерирует валидные PDF-файлы (`%PDF` magic bytes)
@@ -267,7 +267,7 @@ pnpm --filter @reportplatform/reports report:new inventory-snapshot --formats xl
 
 #### 9.3. API сервис (`packages/api/src/`)
 
-**`report-runs.service.test.ts`** — валидация парсинга payload'ов:
+`**report-runs.service.test.ts`\*\* — валидация парсинга payload'ов:
 
 - `parseCreateRunPayload()` отклоняет некорректные входные данные (`null`, массивы, неполные объекты)
 - Нормализует числовые и булевы параметры в строки (внутренний контракт API)
@@ -275,7 +275,7 @@ pnpm --filter @reportplatform/reports report:new inventory-snapshot --formats xl
 
 **Назначение:** гарантирует, что параметры, попадающие в БД и обработчики, имеют предсказуемый тип.
 
-**`app.http.test.ts`** — HTTP контракты:
+`**app.http.test.ts`\*\* — HTTP контракты:
 
 - Проверяет health endpoint (`GET /health`)
 - Тестирует возвращение ответов в правильном envelope формате (`{ success, data? }`)
@@ -286,7 +286,7 @@ pnpm --filter @reportplatform/reports report:new inventory-snapshot --formats xl
 
 #### 9.4. Worker обработка (`packages/worker/src/`)
 
-**`report-run.processor.test.ts`** — основная логика генерации:
+`**report-run.processor.test.ts`\*\* — основная логика генерации:
 
 - Вызов `processReportRun()` для неизвестного `reportKey` — отмечает запуск как failed с понятной ошибкой
 - Если формат не поддерживается обработчиком — failed с описанием проблемы
@@ -295,7 +295,7 @@ pnpm --filter @reportplatform/reports report:new inventory-snapshot --formats xl
 
 **Назначение:** гарантирует правильное выполнение полного цикла обработки отчёта в worker, включая граничные случаи.
 
-**`queue.processor.test.ts`** — управление очередью:
+`**queue.processor.test.ts`\*\* — управление очередью:
 
 - `processQueue()` предотвращает одновременные проходы (только один `Promise` может быть активен)
 - Полное опустошение очереди: обрабатывает все queued-запуски пока они не закончатся
@@ -306,11 +306,11 @@ pnpm --filter @reportplatform/reports report:new inventory-snapshot --formats xl
 
 #### 9.5. Общие утилиты и маппёры
 
-**`params.test.ts`** и **`report-run.mapper.test.ts`** в `packages/shared/` — валидация парсинга параметров и маппинга моделей.
+`**params.test.ts`** и `**report-run.mapper.test.ts\*\*`в`packages/shared/` — валидация парсинга параметров и маппинга моделей.
 
 #### 9.6. E2E (`e2e/`)
 
-**`report-platform.spec.ts`** (Playwright) проверяет сквозной сценарий в браузере: список отчётов, создание запуска, появление записи в списке запусков, скачивание непустого файла.
+`**report-platform.spec.ts**` (Playwright) проверяет сквозной сценарий в браузере: список отчётов, создание запуска, появление записи в списке запусков, скачивание непустого файла.
 
 Запуск:
 
@@ -337,21 +337,22 @@ pnpm --filter @reportplatform/reports report:new inventory-snapshot --formats xl
 
 ## 10. Осознанные упрощения в MVP
 
-### Stub-генерация файлов
+### Генерация файлов и демо-данные
 
-Текущие handler'ы и worker генерируют текстовый stub-контент с расширением `.xlsx` / `.pdf`, а не настоящие бинарные файлы. Это сделано осознанно:
+Handler'ы в `generate()` возвращают `content` как `Buffer` (тело файла) и `fileExtension`. Воркер в `processReportRun()` берёт handler из реестра, вызывает `handler.generate(run)` и пишет байты в storage. Это сделано осознанно:
 
-- Фокус прототипа — на архитектуре, lifecycle и паттерне расширения, а не на библиотеках рендеринга
-- Замена stub на реальную генерацию (exceljs, pdfkit и т.д.) — изменение только внутри `generate()` конкретного handler'а
-- Остальная цепочка (API, worker, UI, download) работает одинаково для stub и real content
+- Текущие встроенные отчёты — **реальные** бинарные форматы: `sales-summary` (XLSX через **ExcelJS**), `weather-brief` (PDF через **PDFKit**, шрифты Noto для кириллицы). Упрощение MVP — **данные** (демо-таблицы, захардкоженные ряды), а не «текст вместо xlsx/pdf».
+- Кодогенератор `report:new` по умолчанию подставляет минимальный **текстовый** placeholder в `generate()` — при доработке handler'а его заменяют на нормальную генерацию, не трогая API/worker.
+- Тонкая доработка продуктовой логики (SQL, внешние API, тяжёлые шаблоны) — в основном внутри `generate()` / вынесенных helper'ов; остальная цепочка (API, worker, UI, download) не меняется
 
 ### Отсутствие автоматических миграций
 
-Схема БД создаётся вручную (одна команда из README). В прототипе одна таблица, и отдельный инструмент миграций добавил бы сложность без пропорциональной пользы. В продакшене — обязательно.
+В прототипе нет отдельного инструмента миграций (например, Prisma / node-pg-migrate / Flyway / Knex и т.п.). Вместо этого для MVP используется базовая инициализация PostgreSQL: SQL-скрипты из `init-db/` монтируются в `/docker-entrypoint-initdb.d` и выполняются **один раз** при первом старте контейнера (когда volume `postgres-data` пустой).
 
-### Worker не вызывает `generate()` из handler'ов
+Это осознанный компромисс: в MVP одна таблица, и полноценный миграционный слой добавил бы сложность без пропорциональной пользы. При изменении схемы в рамках прототипа есть два варианта:
 
-Текущий worker использует `buildStubReportContent()` напрямую, а не `handler.generate()`. Это промежуточное состояние: контракт `ReportHandler.generate` определён, handler'ы его реализуют, но worker пока не делегирует вызов через реестр. Переключение — замена нескольких строк в `report-run.processor.ts`.
+- выполнить SQL вручную на существующей БД (если важно сохранить данные);
+- в дев-окружении пересоздать volume PostgreSQL и дать init-скриптам примениться заново (данные будут потеряны).
 
 ## 11. Что не реализовано и почему
 
@@ -361,7 +362,7 @@ pnpm --filter @reportplatform/reports report:new inventory-snapshot --formats xl
 | WebSocket / SSE для статусов       | Polling каждые 5 с достаточен для демо                                                           | SSE или WebSocket push при смене статуса                                                                               |
 | Очередь сообщений (Redis/RabbitMQ) | DB polling достаточен для масштаба MVP                                                           | BullMQ + Redis для retry, приоритетов, dead letter queue                                                               |
 | Object storage (S3/MinIO)          | Shared volume работает в docker compose                                                          | S3-compatible storage с presigned URLs                                                                                 |
-| Реальная генерация XLSX/PDF        | Фокус на архитектуре, а не на библиотеках рендеринга                                             | exceljs / pdfkit / puppeteer внутри handler.generate()                                                                 |
+| Продуктовые данные в отчётах       | В демо handler'ах таблицы/погода захардкожены                                                    | Запросы к БД и сервисам, лимиты, кэш, сложные макеты внутри `generate()` или репозитория                               |
 | CI/CD pipeline                     | Локальная разработка, docker compose                                                             | GitHub Actions: lint, test, typecheck, build, deploy                                                                   |
 | E2E в CI/CD                        | Сценарии в `e2e/`; повторяемый прогон — `docker compose --profile e2e run --rm e2e` (см. README) | Job в CI: поднять стек (`docker compose up -d`), затем тот же прогон e2e; при падении — trace/screenshot/reporter HTML |
 | Structured logging и мониторинг    | console.log достаточен для прототипа                                                             | pino / winston, OpenTelemetry, Prometheus, Grafana                                                                     |
@@ -376,3 +377,4 @@ pnpm --filter @reportplatform/reports report:new inventory-snapshot --formats xl
 5. **Observability:** structured logging (pino), traces (OpenTelemetry), метрики, alerting
 6. **CI/CD:** lint + test + typecheck + build + deploy pipeline; e2e воспроизводимы через сервис `e2e` в compose — **техдолг:** закрепить это в автоматическом pipeline и публиковать артефакты при сбоях
 7. **Push-уведомления:** SSE/WebSocket вместо polling для обновления статусов в UI
+8. **Schema-driven параметры отчётов:** описывать параметры отчёта декларативно (например, JSON Schema/Zod) и переиспользовать одну схему для (1) валидации на API и (2) генерации формы параметров в UI; убрать “свободный JSON” и захардкоженные тестовые данные/дефолты из фронтенда.

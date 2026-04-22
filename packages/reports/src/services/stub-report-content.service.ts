@@ -1,11 +1,10 @@
 import type { ReportRun } from "@reportplatform/shared";
 
 /**
- * Generates stub text content for a report.
+ * Генерирует текстовую заглушку содержимого отчёта.
  *
- * @used-by scripts/generate-report-handler.mjs — injected into generated report handlers
+ * @used-by scripts/generate-report-handler.mjs — подставляется в сгенерированные обработчики отчётов
  */
- 
 export function buildStubReportContent(reportName: string, run: ReportRun): string {
   return [
     `Отчёт: ${reportName}`,
