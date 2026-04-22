@@ -17,13 +17,12 @@ function findWorkspaceRoot(startDir: string): string {
 }
 
 /**
- * Shared directory for generated report files (api download + worker writes).
+ * Общая директория для сгенерированных файлов отчётов (скачивание в API + запись воркером).
  *
- * - If `STORAGE_DIR` is set and absolute, it is used as-is (Docker, custom mounts).
- * - If `STORAGE_DIR` is relative (e.g. `./storage` in root `.env`), it is resolved from the
- *   monorepo workspace root so `pnpm` scripts running in `packages/api` and `packages/worker`
- *   still point at the same folder.
- * - If unset, defaults to `<workspace root>/storage`.
+ * - Если `STORAGE_DIR` задан и является абсолютным путём — используется как есть (Docker, кастомные монтирования).
+ * - Если `STORAGE_DIR` относительный (например `./storage` в корневом `.env`) — резолвится от корня монорепозитория,
+ *   чтобы скрипты `pnpm`, запущенные из `packages/api` и `packages/worker`, указывали на одну и ту же папку.
+ * - Если переменная не задана — по умолчанию `<корень монорепозитория>/storage`.
  */
 export function resolveStorageDirectory(): string {
   const workspaceRoot = findWorkspaceRoot(process.cwd());
@@ -38,7 +37,7 @@ export function resolveStorageDirectory(): string {
 }
 
 /**
- * Resolves `relativeFilePath` under `storageRoot` and rejects path traversal outside the root.
+ * Резолвит `relativeFilePath` внутри `storageRoot` и защищает от выхода за пределы корня (path traversal).
  */
 export function safeResolveUnderStorageRoot(
   storageRoot: string,
@@ -56,12 +55,12 @@ export function safeResolveUnderStorageRoot(
   return targetPath;
 }
 
-/** Older local dev runs wrote artifacts only here (per-package `cwd` + `./storage`). */
+/** В старых локальных запусках артефакты писались только сюда (`cwd` пакета + `./storage`). */
 const LEGACY_WORKER_STORAGE_SEGMENTS = ["packages", "worker", "storage"] as const;
 
 /**
- * Returns an absolute path to an existing artifact file, or `null`.
- * Checks the canonical storage dir first, then the legacy worker package folder from older setups.
+ * Возвращает абсолютный путь к существующему файлу артефакта или `null`.
+ * Сначала проверяет каноническую директорию storage, затем — legacy-папку воркера из старых конфигураций.
  */
 export async function resolveExistingArtifactPath(
   relativeFilePath: string,

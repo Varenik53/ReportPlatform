@@ -1,3 +1,8 @@
+/**
+ * Парсит значение env-переменной как целое число в десятичной системе.
+ *
+ * Возвращает `fallback`, если значение отсутствует или не парсится.
+ */
 export function parseIntEnv(rawValue: string | undefined, fallback: number): number {
   const parsed = Number.parseInt(rawValue ?? "", 10);
 
@@ -8,5 +13,5 @@ export function parseIntEnv(rawValue: string | undefined, fallback: number): num
   return parsed;
 }
 
-/** @deprecated Use {@link parseIntEnv} instead. */
+/** @deprecated Используйте {@link parseIntEnv}. */
 export const getPort = parseIntEnv;

@@ -17,7 +17,7 @@ export async function requestJson(path: string, init?: RequestInit): Promise<unk
         serverMessage = body.error;
       }
     } catch {
-      /* response body is not JSON — fall through */
+      /* тело ответа не JSON — просто продолжаем */
     }
 
     throw new Error(serverMessage ?? `Ошибка запроса: ${response.status} ${response.statusText}`);
